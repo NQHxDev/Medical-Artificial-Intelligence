@@ -2,7 +2,7 @@ import AuthServices from '../services/authServices.js';
 
 class AuthController {
    async login(req, res) {
-      const { identifier, password, rememberMe } = req.body;
+      const { identifier, password } = req.body;
 
       const result = await AuthServices.login({ identifier, password });
 

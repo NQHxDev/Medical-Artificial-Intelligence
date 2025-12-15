@@ -25,22 +25,35 @@ class RepoAccount {
       }
    }
 
-   static async createAccount(formData, connection) {
+   static async findByIdentifier(identifier) {
+      const sql = `
+         SELECT BIN_TO_UUID(ac_id, 1) as ac_id, username, email, fullName, phone, hash_password, role
+         FROM accounts
+         WHERE email = ? OR username = ?
+         LIMIT 1
+      `;
+
+      const [rows] = await executeQuery(sql, [identifier, identifier]);
+      return rows || null;
+   }
+
+   static async createAccount(newAccount, connection) {
       const queryCreate = `
          Insert into accounts
-         (ac_id, username, hash_password, email, phone, role)
-         VALUES (UUID_TO_BIN(?), ?, ?, ?, ?, ?)
+         (ac_id, username, hash_password, email, fullName, phone, role)
+         VALUES (UUID_TO_BIN(?), ?, ?, ?, ?, ?, ?)
       `;
 
       return executeQuery(
          queryCreate,
          [
-            formData.ac_id,
-            formData.username,
-            formData.hash_password,
-            formData.email,
-            formData.phone,
-            formData.role,
+            newAccount.ac_id,
+            newAccount.username,
+            newAccount.hash_password,
+            newAccount.email,
+            newAccount.fullName,
+            newAccount.phone,
+            newAccount.role,
          ],
          connection
       );
