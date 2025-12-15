@@ -65,7 +65,28 @@ export default function LoginPage() {
          const data = await res.json();
 
          if (!res.ok) {
-            setErrors((prev) => ({ ...prev, _form: data.error || 'Đăng nhập thất bại' }));
+            if (data.errors && Array.isArray(data.errors)) {
+               const combinedMessage = data.errors
+                  .map((err: { message?: string }) => err.message ?? '')
+                  .filter(Boolean)
+                  .join(', ');
+
+               setErrors((prev) => ({
+                  ...prev,
+                  _form: `Đăng nhập thất bại: ${combinedMessage}`,
+               }));
+            } else if (data.field) {
+               setErrors((prev) => ({
+                  ...prev,
+                  [data.field]: data.message || 'Có lỗi xảy ra',
+               }));
+            } else {
+               setErrors((prev) => ({
+                  ...prev,
+                  _form: data.message || 'Đăng nhập thất bại',
+               }));
+            }
+
             return;
          }
 

@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { generateKeyPairSync } from 'crypto';
-import bycrpt from 'bcrypt';
+import bcrypt from 'bcrypt';
 
 import dotenv from 'dotenv';
 
@@ -12,9 +12,13 @@ dotenv.config({
 class SecurityUser {
    static async hashPassword(plaintPassword) {
       const salt = 10;
-      const hashedPassword = await bycrpt.hash(plaintPassword, salt);
+      const hashedPassword = await bcrypt.hash(plaintPassword, salt);
 
       return hashedPassword;
+   }
+
+   static async comparePassword(password, hashedPassword) {
+      return bcrypt.compare(password, hashedPassword);
    }
 
    static createTokens(payload, private_key) {

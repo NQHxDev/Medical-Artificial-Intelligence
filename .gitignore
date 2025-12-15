@@ -40,4 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+.venv
 RunServer.bat
+RunClient.bat
+__pycache__/
+model/heart_disease_model.pkl
+evaluation_plots/

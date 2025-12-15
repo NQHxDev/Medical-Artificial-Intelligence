@@ -28,8 +28,14 @@ type Diagnosis = {
    diseaseName?: string;
    description?: string;
    treatments?: string[];
-   recommendation?: string;
+   recommendation?: string | string[];
    medications?: Medication[];
+   risk_level?: 'THẤP' | 'TRUNG BÌNH' | 'CAO';
+   probability?: number;
+   important_factors?: {
+      feature: string;
+      importance: number;
+   }[];
 };
 
 export default function Home() {
@@ -56,23 +62,22 @@ export default function Home() {
    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       setLoading(true);
-
       try {
-         const response = await fetch('/api/diagnose', {
+         const response = await fetch('http://localhost:5000/predict', {
             method: 'POST',
-            headers: {
-               'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(formData),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               symptoms: formData.symptom,
+               age: Number(formData.age),
+               gender: formData.gender,
+               symptom_duration: Number(formData.duration),
+            }),
          });
-
-         const data = (await response.json()) as Diagnosis;
+         const data: Diagnosis = await response.json();
          setDiagnosis(data);
       } catch (error) {
-         console.error('Error:', error);
-         setDiagnosis({
-            error: 'Đã có lỗi xảy ra khi chẩn đoán. Vui lòng thử lại.',
-         });
+         console.error(error);
+         setDiagnosis({ error: 'Đã có lỗi xảy ra khi chẩn đoán. Vui lòng thử lại.' });
       } finally {
          setLoading(false);
       }
@@ -88,6 +93,12 @@ export default function Home() {
 
    // Ensure we always have an array to render safely
    const meds: Medication[] = diagnosis?.medications ?? [];
+   const importantFactors = diagnosis?.important_factors ?? [];
+   const recommendations: string[] = diagnosis?.recommendation
+      ? Array.isArray(diagnosis.recommendation)
+         ? diagnosis.recommendation
+         : [diagnosis.recommendation]
+      : [];
 
    return (
       <main className="min-h-screen bg-linear-to-br from-blue-50 to-white">
@@ -236,52 +247,75 @@ export default function Home() {
                         </div>
                      )}
 
-                     {/* Có kết quả */}
                      {diagnosis && !diagnosis.error && (
                         <div className="space-y-6">
                            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                              <h3 className="text-xl font-bold">
-                                 {diagnosis.diseaseName || 'Bệnh được dự đoán'}
+                              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                                 Chẩn đoán sức khỏe tim mạch
                               </h3>
 
-                              {/* MÔ TẢ */}
-                              <div className="mt-4">
-                                 <h4 className="font-medium text-gray-700 mb-2">Mô tả:</h4>
-                                 <p className="text-gray-600">
-                                    {diagnosis.description || 'Không có mô tả.'}
-                                 </p>
-                              </div>
+                              <p className="text-gray-700 mb-2">
+                                 Sau khi phân tích triệu chứng và thông tin sức khỏe, hệ thống đánh
+                                 giá mức nguy cơ tim mạch của bạn là{' '}
+                                 <span className="font-semibold text-red-600">
+                                    {diagnosis.risk_level}
+                                 </span>{' '}
+                                 với xác suất khoảng{' '}
+                                 <span className="font-semibold">
+                                    {(diagnosis.probability! * 100).toFixed(1)}%
+                                 </span>
+                                 .
+                              </p>
 
-                              {/* ĐỀ XUẤT */}
-                              <div className="mt-4">
-                                 <h4 className="font-medium text-gray-700 mb-2">
-                                    Đề xuất điều trị:
-                                 </h4>
-                                 <ul className="list-disc pl-5 text-gray-600 space-y-1">
-                                    {(diagnosis.treatments || []).map((t, i) => (
-                                       <li key={i}>{t}</li>
-                                    ))}
-                                 </ul>
-                              </div>
+                              {diagnosis.important_factors &&
+                                 diagnosis.important_factors.length > 0 && (
+                                    <div className="mb-3">
+                                       <h4 className="font-medium text-gray-800 mb-1">
+                                          Những yếu tố ảnh hưởng đến kết quả:
+                                       </h4>
+                                       <ul className="list-disc list-inside text-gray-700">
+                                          {diagnosis.important_factors.map((factor, idx) => (
+                                             <li key={idx}>
+                                                {factor.feature.replace('_', ' ')}: đóng góp khoảng{' '}
+                                                {(factor.importance * 100).toFixed(1)}%
+                                             </li>
+                                          ))}
+                                       </ul>
+                                    </div>
+                                 )}
 
-                              {/* KHUYẾN CÁO */}
-                              <div className="mt-4">
-                                 <h4 className="font-medium text-gray-700 mb-2">Khuyến cáo:</h4>
-                                 <p className="text-gray-600">
-                                    {diagnosis.recommendation || 'Không có khuyến cáo.'}
-                                 </p>
-                              </div>
+                              {recommendations.length > 0 && (
+                                 <div>
+                                    <h4 className="font-medium text-gray-800 mb-1">
+                                       Gợi ý dành cho bạn:
+                                    </h4>
+                                    <ul className="list-disc list-inside text-gray-700 space-y-1">
+                                       {recommendations.map((rec, idx) => (
+                                          <li key={idx}>{rec}</li>
+                                       ))}
+                                    </ul>
+                                 </div>
+                              )}
                            </div>
 
-                           {/* THUỐC */}
-                           {meds.length > 0 && (
+                           {/* Thuốc */}
+                           {diagnosis.medications && diagnosis.medications.length > 0 && (
                               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                                 <h4 className="font-medium text-gray-700 mb-3">Thuốc đề xuất:</h4>
+                                 <h4 className="font-medium text-gray-800 mb-3">
+                                    Thuốc được đề xuất:
+                                 </h4>
                                  <div className="grid grid-cols-2 gap-3">
-                                    {meds.map((med, index) => (
-                                       <div key={index} className="bg-white p-3 rounded border">
+                                    {diagnosis.medications.map((med, index) => (
+                                       <div
+                                          key={index}
+                                          className="bg-white p-3 rounded border shadow-sm"
+                                       >
                                           <div className="font-medium">{med.name}</div>
-                                          <div className="text-sm text-gray-500">{med.dosage}</div>
+                                          {med.dosage && (
+                                             <div className="text-sm text-gray-500">
+                                                {med.dosage}
+                                             </div>
+                                          )}
                                        </div>
                                     ))}
                                  </div>
