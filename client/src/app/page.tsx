@@ -1,104 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import type { ChangeEvent, FormEvent } from 'react';
-import {
-   Select,
-   SelectTrigger,
-   SelectValue,
-   SelectContent,
-   SelectItem,
-} from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-
-type FormData = {
-   symptom: string;
-   age: string;
-   gender: string;
-   duration: string;
-};
-
-type Medication = {
-   name: string;
-   dosage?: string;
-};
-
-type Diagnosis = {
-   error?: string;
-   diseaseName?: string;
-   description?: string;
-   treatments?: string[];
-   recommendation?: string | string[];
-   medications?: Medication[];
-   risk_level?: 'THẤP' | 'TRUNG BÌNH' | 'CAO';
-   probability?: number;
-   important_factors?: {
-      feature: string;
-      importance: number;
-   }[];
-};
+import { DiagnosisResult } from '@/components/diagnosis/DiagnosisResult';
+import { PatientForm } from '@/components/diagnosis/PatientForm';
+import { useDiagnosis } from '@/hooks/useDiagnosis';
 
 export default function Home() {
-   const [formData, setFormData] = useState<FormData>({
-      symptom: '',
-      age: '',
-      gender: '',
-      duration: '',
-   });
-
-   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
-   const [loading, setLoading] = useState<boolean>(false);
-
-   const handleChange = (
-      e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-   ) => {
-      const { name, value } = e.target as HTMLInputElement;
-      setFormData((prev) => ({
-         ...prev,
-         [name]: value,
-      }));
-   };
-
-   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      setLoading(true);
-      try {
-         const response = await fetch('http://localhost:5000/predict', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-               symptoms: formData.symptom,
-               age: Number(formData.age),
-               gender: formData.gender,
-               symptom_duration: Number(formData.duration),
-            }),
-         });
-         const data: Diagnosis = await response.json();
-         setDiagnosis(data);
-      } catch (error) {
-         console.error(error);
-         setDiagnosis({ error: 'Đã có lỗi xảy ra khi chẩn đoán. Vui lòng thử lại.' });
-      } finally {
-         setLoading(false);
-      }
-   };
-
-   const handleDurationChange = (value: string) => {
-      setFormData((prev) => ({ ...prev, duration: value }));
-   };
-
-   const handleGenderChange = (value: string) => {
-      setFormData((prev) => ({ ...prev, gender: value }));
-   };
-
-   // Ensure we always have an array to render safely
-   const meds: Medication[] = diagnosis?.medications ?? [];
-   const importantFactors = diagnosis?.important_factors ?? [];
-   const recommendations: string[] = diagnosis?.recommendation
-      ? Array.isArray(diagnosis.recommendation)
-         ? diagnosis.recommendation
-         : [diagnosis.recommendation]
-      : [];
+   const { diagnosis, loading, predict } = useDiagnosis();
 
    return (
       <main className="min-h-screen bg-linear-to-br from-blue-50 to-white">
@@ -133,194 +40,23 @@ export default function Home() {
 
                <div className="grid lg:grid-cols-2 gap-8">
                   {/* FORM */}
-                  <div className="bg-white rounded-2xl shadow-xl p-8">
-                     <h2 className="text-2xl font-bold text-gray-800 mb-6">Thông tin bệnh nhân</h2>
-
-                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* TRIỆU CHỨNG */}
-                        <div>
-                           <label className="block text-gray-700 mb-2 font-medium">
-                              Triệu chứng chính *
-                           </label>
-                           <textarea
-                              name="symptom"
-                              value={formData.symptom}
-                              onChange={handleChange}
-                              required
-                              rows={4}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                              placeholder="Mô tả chi tiết triệu chứng..."
-                           />
-                        </div>
-
-                        {/* TUỔI + GIỚI TÍNH */}
-                        <div className="grid md:grid-cols-2 gap-6">
-                           <div>
-                              <label className="block text-gray-700 mb-2 font-medium">Tuổi *</label>
-                              <Input
-                                 type="number"
-                                 name="age"
-                                 value={formData.age}
-                                 onChange={handleChange}
-                                 required
-                                 className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                 placeholder="Nhập tuổi"
-                              />
-                           </div>
-
-                           <div>
-                              <label className="block text-gray-700 mb-2 font-medium">
-                                 Giới tính *
-                              </label>
-                              <Select
-                                 defaultValue={formData.gender}
-                                 onValueChange={(value) => handleGenderChange(value)}
-                              >
-                                 <SelectTrigger className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                                    <SelectValue placeholder="Chọn giới tính" />
-                                 </SelectTrigger>
-
-                                 <SelectContent>
-                                    <SelectItem value="male">Nam</SelectItem>
-                                    <SelectItem value="female">Nữ</SelectItem>
-                                 </SelectContent>
-                              </Select>
-
-                              {/* keep a hidden input so the form contains the gender value */}
-                              <input type="hidden" name="gender" value={formData.gender} />
-                           </div>
-                        </div>
-
-                        {/* THỜI GIAN TRIỆU CHỨNG */}
-                        <div>
-                           <label className="block text-gray-700 mb-2 font-medium">
-                              Thời gian triệu chứng *
-                           </label>
-                           <Select
-                              defaultValue={formData.duration}
-                              onValueChange={(value) => handleDurationChange(value)}
-                           >
-                              <SelectTrigger className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                                 <SelectValue placeholder="Chọn thời gian" />
-                              </SelectTrigger>
-
-                              <SelectContent>
-                                 <SelectItem value="1">Dưới 1 ngày</SelectItem>
-                                 <SelectItem value="2">1–3 ngày</SelectItem>
-                                 <SelectItem value="3">4–7 ngày</SelectItem>
-                                 <SelectItem value="4">Trên 1 tuần</SelectItem>
-                              </SelectContent>
-                           </Select>
-                        </div>
-
-                        {/* SUBMIT BUTTON */}
-                        <button
-                           type="submit"
-                           disabled={loading}
-                           className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-md"
-                        >
-                           {loading ? 'Đang chẩn đoán...' : 'Chẩn đoán ngay'}
-                        </button>
-                     </form>
-                  </div>
+                  <PatientForm loading={loading} onSubmit={predict} />
 
                   {/* KẾT QUẢ */}
                   <div className="bg-white rounded-2xl shadow-xl p-8">
                      <h2 className="text-2xl font-bold text-gray-800 mb-6">Kết quả chẩn đoán</h2>
 
-                     {/* Chưa có dữ liệu */}
+                     <DiagnosisResult diagnosis={diagnosis} />
+
+                     {/* Hiển thị khi chưa có kết quả */}
                      {!diagnosis && (
                         <div className="h-full flex flex-col items-center justify-center text-center py-12">
                            <h3 className="text-xl font-medium text-gray-700 mb-2">
                               Chưa có kết quả chẩn đoán
                            </h3>
                            <p className="text-gray-500 max-w-md">
-                              Nhập thông tin và nhấn Chẩn đoán ngay để xem kết quả
+                              Nhập thông tin và nhấn `Chẩn đoán ngay` để xem kết quả
                            </p>
-                        </div>
-                     )}
-
-                     {/* Có lỗi */}
-                     {diagnosis?.error && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-red-600">
-                           {diagnosis.error}
-                        </div>
-                     )}
-
-                     {diagnosis && !diagnosis.error && (
-                        <div className="space-y-6">
-                           <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                              <h3 className="text-xl font-bold text-gray-800 mb-2">
-                                 Chẩn đoán sức khỏe tim mạch
-                              </h3>
-
-                              <p className="text-gray-700 mb-2">
-                                 Sau khi phân tích triệu chứng và thông tin sức khỏe, hệ thống đánh
-                                 giá mức nguy cơ tim mạch của bạn là{' '}
-                                 <span className="font-semibold text-red-600">
-                                    {diagnosis.risk_level}
-                                 </span>{' '}
-                                 với xác suất khoảng{' '}
-                                 <span className="font-semibold">
-                                    {(diagnosis.probability! * 100).toFixed(1)}%
-                                 </span>
-                                 .
-                              </p>
-
-                              {diagnosis.important_factors &&
-                                 diagnosis.important_factors.length > 0 && (
-                                    <div className="mb-3">
-                                       <h4 className="font-medium text-gray-800 mb-1">
-                                          Những yếu tố ảnh hưởng đến kết quả:
-                                       </h4>
-                                       <ul className="list-disc list-inside text-gray-700">
-                                          {diagnosis.important_factors.map((factor, idx) => (
-                                             <li key={idx}>
-                                                {factor.feature.replace('_', ' ')}: đóng góp khoảng{' '}
-                                                {(factor.importance * 100).toFixed(1)}%
-                                             </li>
-                                          ))}
-                                       </ul>
-                                    </div>
-                                 )}
-
-                              {recommendations.length > 0 && (
-                                 <div>
-                                    <h4 className="font-medium text-gray-800 mb-1">
-                                       Gợi ý dành cho bạn:
-                                    </h4>
-                                    <ul className="list-disc list-inside text-gray-700 space-y-1">
-                                       {recommendations.map((rec, idx) => (
-                                          <li key={idx}>{rec}</li>
-                                       ))}
-                                    </ul>
-                                 </div>
-                              )}
-                           </div>
-
-                           {/* Thuốc */}
-                           {diagnosis.medications && diagnosis.medications.length > 0 && (
-                              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                                 <h4 className="font-medium text-gray-800 mb-3">
-                                    Thuốc được đề xuất:
-                                 </h4>
-                                 <div className="grid grid-cols-2 gap-3">
-                                    {diagnosis.medications.map((med, index) => (
-                                       <div
-                                          key={index}
-                                          className="bg-white p-3 rounded border shadow-sm"
-                                       >
-                                          <div className="font-medium">{med.name}</div>
-                                          {med.dosage && (
-                                             <div className="text-sm text-gray-500">
-                                                {med.dosage}
-                                             </div>
-                                          )}
-                                       </div>
-                                    ))}
-                                 </div>
-                              </div>
-                           )}
                         </div>
                      )}
                   </div>

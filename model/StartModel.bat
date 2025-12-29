@@ -1,3 +1,8 @@
 @echo off
 call "E:\My Project\TriTueNhanTao\.venv\Scripts\activate.bat"
-python api.py
+
+cd /d "E:\My Project\TriTueNhanTao\model"
+
+@REM python api.py
+python ./api/app.py
+pause

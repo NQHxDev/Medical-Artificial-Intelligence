@@ -46,3 +46,7 @@ RunClient.bat
 __pycache__/
 model/heart_disease_model.pkl
 evaluation_plots/
+.vscode/
+model_test/
+old_data/
+demo/
